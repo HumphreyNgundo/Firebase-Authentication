@@ -1,4 +1,4 @@
-name: firebase_auth
+name: firebaseAuth
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -38,6 +38,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  firebase_core: ^2.15.1
+  firebase_auth: ^4.9.0
+  google_sign_in: ^6.1.5
+  provider: ^6.0.5
+#  sign_in_with_apple: ^5.0.0+1   # For Apple sign-in
+  flutter_facebook_auth: ^6.0.1 # If you want Facebook auth
+  firebase_analytics: ^10.5.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
