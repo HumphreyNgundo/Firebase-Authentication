@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _user != null;
+  String? _verificationId;
 
   AuthProvider() {
     _init();
@@ -105,5 +106,72 @@ class AuthProvider extends ChangeNotifier {
   void _setError(String? value) {
     _error = value;
     notifyListeners();
+  }
+
+  Future<void> verifyPhoneNumber(String phoneNumber) async {
+    _setLoading(true);
+    try {
+      await _authService.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-resolution (Android only)
+          await signInWithPhoneCredential(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          _setError(e.message ?? "Phone verification failed");
+          _setLoading(false);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          _setLoading(false);
+          _setError(null);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+    }
+  }
+
+  Future<void> signInWithPhoneCredential(PhoneAuthCredential credential) async {
+    _setLoading(true);
+    try {
+      await _authService.signInWithPhoneCredential(credential);
+      _setError(null);
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> verifyOTP(String smsCode) async {
+    if (_verificationId == null) {
+      _setError("No verification ID found. Request code again.");
+      return;
+    }
+
+    PhoneAuthCredential credential = PhoneAuthProvider.credential(
+      verificationId: _verificationId!,
+      smsCode: smsCode,
+    );
+
+    await signInWithPhoneCredential(credential);
+  }
+
+// Apple sign in
+  Future<void> signInWithApple() async {
+    _setLoading(true);
+    try {
+      await _authService.signInWithApple();
+      _setError(null);
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
   }
 }
