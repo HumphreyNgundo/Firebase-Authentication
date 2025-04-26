@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/AnalyticsService.dart';
 import '../services/AuthService.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final AnalyticsService _analyticsService = AnalyticsService();
+
   User? _user;
   bool _isLoading = false;
   String? _error;
@@ -29,7 +32,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signUpWithEmail(String email, String password) async {
     _setLoading(true);
     try {
-      await _authService.signUpWithEmail(email, password);
+      final userCredential = await _authService.signUpWithEmail(email, password);
+      await _analyticsService.logSignUp('email');
+      if (userCredential.user != null) {
+        await _analyticsService.setUserProperties(userId: userCredential.user!.uid);
+      }
       _setError(null);
     } catch (e) {
       _setError(e.toString());
@@ -41,7 +48,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signInWithEmail(String email, String password) async {
     _setLoading(true);
     try {
-      await _authService.signInWithEmail(email, password);
+      final userCredential = await _authService.signInWithEmail(email, password);
+      await _analyticsService.logLogin('email');
+      if (userCredential.user != null) {
+        await _analyticsService.setUserProperties(userId: userCredential.user!.uid);
+      }
       _setError(null);
     } catch (e) {
       _setError(e.toString());
@@ -53,7 +64,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signInWithGoogle() async {
     _setLoading(true);
     try {
-      await _authService.signInWithGoogle();
+      final userCredential = await _authService.signInWithGoogle();
+      await _analyticsService.logLogin('email');
+      if (userCredential.user != null) {
+        await _analyticsService.setUserProperties(userId: userCredential.user!.uid);
+      }
       _setError(null);
     } catch (e) {
       _setError(e.toString());
@@ -65,7 +80,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signInAnonymously() async {
     _setLoading(true);
     try {
-      await _authService.signInAnonymously();
+      final userCredential = await _authService.signInAnonymously();
+      await _analyticsService.logLogin('email');
+      if (userCredential.user != null) {
+        await _analyticsService.setUserProperties(userId: userCredential.user!.uid);
+      }
       _setError(null);
     } catch (e) {
       _setError(e.toString());

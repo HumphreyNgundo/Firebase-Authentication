@@ -2,6 +2,7 @@ import 'package:firebaseAuth/providers/AuthProviders.dart';
 import 'package:firebaseAuth/providers/ThemeProvider.dart';
 import 'package:firebaseAuth/screens/HomeScreen.dart';
 import 'package:firebaseAuth/screens/auth/LoginScreen.dart';
+import 'package:firebaseAuth/services/AnalyticsService.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +21,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AnalyticsService _analyticsService = AnalyticsService();
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
@@ -31,6 +34,9 @@ class MyApp extends StatelessWidget {
             title: 'Firebase Auth Demo',
             theme: themeProvider.themeData,
             home: const AuthWrapper(),
+            navigatorObservers: [
+              _analyticsService.getAnalyticsObserver(),
+            ],
           );
         },
       ),
