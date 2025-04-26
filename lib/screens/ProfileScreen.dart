@@ -20,14 +20,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
   String? _error;
+  bool _showSuccessMessage = false;
 
   @override
   void initState() {
     super.initState();
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user != null) {
-      _displayNameController.text = user.displayName ?? '';
-      _emailController.text = user.email ?? '';
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).user;
+      if (user != null) {
+        _displayNameController.text = user.displayName ?? '';
+        _emailController.text = user.email ?? '';
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load user data: ${e.toString()}';
+      });
     }
   }
 
@@ -43,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = true;
         _error = null;
+        _showSuccessMessage = false;
       });
 
       try {
@@ -50,17 +62,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           displayName: _displayNameController.text.trim(),
         );
 
-        if (_emailController.text.trim() != Provider.of<AuthProvider>(context, listen: false).user?.email) {
+        final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
+        if (currentUser != null && !currentUser.isAnonymous &&
+            _emailController.text.trim() != currentUser.email) {
           await _authService.updateEmail(_emailController.text.trim());
         }
 
+        setState(() {
+          _showSuccessMessage = true;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          const SnackBar(
+            content: Text('Profile updated successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       } catch (e) {
         setState(() {
           _error = e.toString();
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       } finally {
         setState(() {
           _isLoading = false;
@@ -71,7 +99,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
 
     if (user == null) {
       return const Scaffold(
@@ -84,126 +113,228 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        elevation: 2,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: user.photoURL != null
-                    ? NetworkImage(user.photoURL!)
-                    : null,
-                child: user.photoURL == null
-                    ? const Icon(Icons.person, size: 50)
-                    : null,
-              ),
-
-              const SizedBox(height: 24),
-
-              TextFormField(
-                controller: _displayNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Display Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a display name';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                enabled: !user.isAnonymous,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              ElevatedButton(
-                onPressed: _isLoading ? null : _updateProfile,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Update Profile'),
-              ),
-
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Hero(
+                  tag: 'profile_image',
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey.shade200,
+                    backgroundImage: user.photoURL != null
+                        ? NetworkImage(user.photoURL!)
+                        : null,
+                    child: user.photoURL == null
+                        ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                        : null,
                   ),
                 ),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-              const Text(
-                'Change Password',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+                if (_showSuccessMessage)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade700),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Profile updated successfully',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 16),
+                if (_error != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade700),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: Colors.red.shade700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              ElevatedButton(
-                onPressed: user.isAnonymous ? null : () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
-                  );
-                },
-                child: const Text('Change Password'),
-              ),
-
-              if (user.isAnonymous) ...[
-                const SizedBox(height: 32),
-
-                const Text(
-                  'Convert Anonymous Account',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 8),
-
-                const Text(
-                  'Link your anonymous account to a permanent account to save your data.',
-                  textAlign: TextAlign.center,
+                TextFormField(
+                  controller: _displayNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Display Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a display name';
+                    }
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 16),
 
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LinkAccountScreen()),
-                    );
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.email),
+                    enabled: !user.isAnonymous,
+                  ),
+                  enabled: !user.isAnonymous,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
                   },
-                  child: const Text('Link Email Account'),
                 ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _updateProfile,
+                    icon: _isLoading
+                        ? Container(
+                      width: 24,
+                      height: 24,
+                      padding: const EdgeInsets.all(2.0),
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                        : const Icon(Icons.save),
+                    label: const Text('Update Profile'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Security Options',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 16),
+
+                if (!user.isAnonymous)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.lock),
+                    label: const Text('Change Password'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+
+                if (user.isAnonymous) ...[
+                  const SizedBox(height: 16),
+
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Anonymous Account',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Link your anonymous account to a permanent account to save your data.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.link),
+                            label: const Text('Link Email Account'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const LinkAccountScreen()),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
