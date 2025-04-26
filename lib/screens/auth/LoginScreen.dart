@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/AuthProviders.dart';
 import 'ForgotPasswordScreen.dart';
+import 'PhoneAuthScreen.dart';
 import 'RegisterScreen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -108,6 +109,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: authProvider.isLoading
                       ? const CircularProgressIndicator()
                       : const Text('Login'),
+                ),
+
+                const SizedBox(height: 16),
+
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Sign in with Phone'),
+                  onPressed: authProvider.isLoading
+                      ? null
+                      : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PhoneAuthScreen()),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 16),
