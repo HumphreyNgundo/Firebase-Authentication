@@ -1,4 +1,5 @@
 import 'package:firebaseAuth/providers/AuthProviders.dart';
+import 'package:firebaseAuth/providers/ThemeProvider.dart';
 import 'package:firebaseAuth/screens/HomeScreen.dart';
 import 'package:firebaseAuth/screens/auth/LoginScreen.dart';
 import 'package:flutter/material.dart';
@@ -19,15 +20,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
-      child: MaterialApp(
-        title: 'Firebase Auth Demo',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        home: const AuthWrapper(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Firebase Auth Demo',
+            theme: themeProvider.themeData,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

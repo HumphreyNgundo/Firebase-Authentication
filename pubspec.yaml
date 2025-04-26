@@ -46,6 +46,7 @@ dev_dependencies:
   flutter_facebook_auth: ^6.0.1 # If you want Facebook auth
   firebase_analytics: ^10.5.0
   crypto: ^3.0.3
+  shared_preferences: ^2.5.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
